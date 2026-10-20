@@ -1,0 +1,82 @@
+{
+  "active": "P64",
+  "presets": {
+    "P58": {
+      "scheme": "dct_ss",
+      "params": {
+        "alpha": 6.492188,
+        "mode": "additive",
+        "n": 2048
+      },
+      "target_wpsnr": 58,
+      "tau": 0.1061,
+      "roc": {
+        "fpr_target": 0.01,
+        "auc": 0.9999,
+        "tpr": 0.973
+      },
+      "expected": {
+        "p10_wpsnr": 58.08,
+        "mean_break_wpsnr": 37.37908282980661,
+        "score": 10
+      }
+    },
+    "P62": {
+      "scheme": "dct_ss",
+      "params": {
+        "alpha": 5.800781,
+        "mode": "additive",
+        "n": 1024
+      },
+      "target_wpsnr": 62,
+      "tau": 0.1174,
+      "roc": {
+        "fpr_target": 0.01,
+        "auc": 0.9998,
+        "tpr": 0.936
+      },
+      "expected": {
+        "p10_wpsnr": 62.03,
+        "mean_break_wpsnr": 39.13155665952164,
+        "score": 11
+      }
+    },
+    "P64": {
+      "scheme": "dct_ss",
+      "params": {
+        "alpha": 5.0,
+        "mode": "additive",
+        "n": 1024
+      },
+      "target_wpsnr": 64,
+      "tau": 0.1218,
+      "roc": {
+        "fpr_target": 0.01,
+        "auc": 0.9975,
+        "tpr": 0.871,
+        "heldout_tpr": 0.902,
+        "heldout_fpr": 0.0
+      }
+    },
+    "P66": {
+      "scheme": "dct_ss",
+      "params": {
+        "alpha": 4.360352,
+        "mode": "additive",
+        "n": 1024
+      },
+      "target_wpsnr": 66,
+      "tau": 0.1214,
+      "roc": {
+        "fpr_target": 0.01,
+        "auc": 0.9887,
+        "tpr": 0.748
+      },
+      "expected": {
+        "p10_wpsnr": 66.09,
+        "mean_break_wpsnr": 40.07054403580505,
+        "score": 12
+      }
+    }
+  }
+}
