@@ -1,34 +1,34 @@
 """
-Calcolo della soglia TAU con la curva ROC (LAB-3 ROC "Example 2" + scelta di
-tau del LAB-4), fatto UNA volta sola e fuori dalla detection.
+Computation of the threshold TAU with the ROC curve (LAB-3 ROC "Example 2" +
+choice of tau from LAB-4), done only ONCE and outside the detection.
 
-Procedura (quella delle regole della gara):
-  1. embedding del nostro watermark in un insieme di immagini;
-  2. attacchi casuali sulle marchiate (random_attack, 1-2 attacchi ammessi);
-  3. H1 (label 1): sim(W_extracted, W_attacked), cioè lo stesso confronto che
-     fa la detection. Teniamo solo gli attacchi con WPSNR >= 35, perché sotto
-     35 dB l'attacco è comunque fallito;
-  4. H0 (label 0), tre casi "senza il nostro marchio":
-       a. watermark casuale contro W_attacked (passo 5 delle regole)
-       b. stessa immagine marchiata con un ALTRO watermark e attaccata
-          (simula le immagini degli altri gruppi)
-       c. originale non marchiata e attaccata
-  5. roc_curve, AUC e scelta di tau = TPR massimo con FPR <= FPR_TARGET.
-     Per sicurezza tau non scende sotto media(H0) + 4 * std(H0): un falso
-     positivo costa 2 punti.
-Le immagini sono divise in calibrazione e verifica (come nel LAB-4).
+Procedure (the one in the competition rules):
+  1. embedding of our watermark into a set of images;
+  2. random attacks on the watermarked images (random_attack, 1-2 allowed attacks);
+  3. H1 (label 1): sim(W_extracted, W_attacked), i.e. the same comparison the
+     detection makes. We keep only attacks with WPSNR >= 35, because below
+     35 dB the attack has failed anyway;
+  4. H0 (label 0), three cases "without our mark":
+       a. random watermark against W_attacked (step 5 of the rules)
+       b. same image watermarked with ANOTHER watermark and attacked
+          (simulates the other groups' images)
+       c. unwatermarked original, attacked
+  5. roc_curve, AUC and choice of tau = maximum TPR with FPR <= FPR_TARGET.
+     For safety tau does not go below mean(H0) + 4 * std(H0): a false
+     positive costs 2 points.
+The images are split into calibration and test sets (as in LAB-4).
 
-Alla fine verifica anche la TAU scritta in detection_groupname.py (0.1218):
-TPR e FPR che dà sulle stesse immagini.
+At the end it also checks the TAU written in detection_groupname.py (0.1218):
+the TPR and FPR it gives on the same images.
 
-Uso:  python roc.py              (ALPHA di embedding.py)
-      python roc.py 4.5          (prova un altro alpha)
+Usage:  python roc.py              (ALPHA from embedding.py)
+        python roc.py 4.5          (try another alpha)
 """
 import os
 import sys
 
 import matplotlib
-matplotlib.use("Agg")                       # salva il grafico senza aprire finestre
+matplotlib.use("Agg")                       # save the plot without opening windows
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import auc, roc_curve
@@ -38,21 +38,21 @@ from common import (RESULTS_DIR, list_images, load_mark, random_attack, random_m
 import embedding
 import detection_groupname as det
 
-FPR_TARGET = 0.01          # dentro l'intervallo [0, 0.1] chiesto dalle regole
+FPR_TARGET = 0.01          # within the [0, 0.1] range required by the rules
 ATTACKS_PER_IMAGE = 10
-N_CALIB = 40               # immagini di calibrazione
-N_TEST = 20                # immagini di verifica (diverse dalle prime)
+N_CALIB = 40               # calibration images
+N_TEST = 20                # test images (different from the first ones)
 SEED = 2026
 
 
 def compute_scores(paths, embed, extract, param, bits, rng):
-    """Restituisce (scores, labels) di H1 e H0 per le immagini date."""
+    """Returns (scores, labels) of H1 and H0 for the given images."""
     scores, labels = [], []
     for path in paths:
         orig = read_gray(path)
         wm = embed(orig, bits, param)
         w_ext = extract(orig, wm, param)
-        other = embed(orig, random_mark(rng), param)       # immagine di "un altro gruppo"
+        other = embed(orig, random_mark(rng), param)       # image of "another group"
         for _ in range(ATTACKS_PER_IMAGE):
             seed = int(rng.integers(1_000_000))
             attacked, _ = random_attack(wm, np.random.default_rng(seed))
@@ -61,9 +61,9 @@ def compute_scores(paths, embed, extract, param, bits, rng):
             w_att = extract(orig, attacked, param)
             # H1
             scores.append(similarity(w_ext, w_att)); labels.append(1)
-            # H0-a: watermark casuale
+            # H0-a: random watermark
             scores.append(similarity(to_bipolar(random_mark(rng)), w_att)); labels.append(0)
-            # H0-b e H0-c: stesso attacco su immagine di un altro gruppo e su originale
+            # H0-b and H0-c: same attack on another group's image and on the original
             for img in (other, orig):
                 att0, _ = random_attack(img, np.random.default_rng(seed))
                 scores.append(similarity(w_ext, extract(orig, att0, param))); labels.append(0)
@@ -71,7 +71,7 @@ def compute_scores(paths, embed, extract, param, bits, rng):
 
 
 def choose_tau(scores, labels, fpr_target=FPR_TARGET):
-    """Tau con il TPR più alto tra quelle con FPR <= fpr_target (LAB-4)."""
+    """Tau with the highest TPR among those with FPR <= fpr_target (LAB-4)."""
     fpr, tpr, thr = roc_curve(labels, scores, drop_intermediate=False)
     valid = np.flatnonzero(fpr <= fpr_target)
     best = valid[np.argmax(tpr[valid])]
@@ -108,7 +108,7 @@ def run(embed, extract, param, n_calib=N_CALIB, n_test=N_TEST, name="dct_ss", pl
     print("  calibrazione: TPR %.3f FPR %.4f" % rates(s_cal, l_cal, tau))
     print("  verifica:     TPR %.3f FPR %.4f" % (test_tpr, test_fpr))
     if param == det.ALPHA:
-        # controllo della soglia scritta a mano nella detection
+        # check of the threshold written by hand in the detection
         print("  TAU della detection = %.4f -> calibrazione TPR %.3f FPR %.4f | verifica TPR %.3f FPR %.4f"
               % ((det.TAU,) + rates(s_cal, l_cal, det.TAU) + rates(s_test, l_test, det.TAU)))
 

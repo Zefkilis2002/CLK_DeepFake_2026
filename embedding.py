@@ -1,33 +1,33 @@
 """
-Embedding del gruppo: Spread Spectrum ADDITIVO in DCT (LAB-3).
+The group's embedding: ADDITIVE Spread Spectrum in DCT (LAB-3).
 
-Idea (WatermarkingSpreadSpectrum2022.pdf; LAB3-ROC.ipynb, embedding con
+Idea (WatermarkingSpreadSpectrum2022.pdf; LAB3-ROC.ipynb, embedding with
 v='additive'):
-  1. DCT 2D dell'intera immagine;
-  2. si scelgono i 1024 coefficienti di modulo più grande (DC escluso):
-     sono le componenti percettivamente più importanti, quindi per cancellare
-     il marchio l'attaccante deve rovinare l'immagine;
-  3. al modulo di ciascuno si somma ALPHA * x, con x = +1 / -1;
-  4. si rimettono i segni, IDCT, arrotondamento a uint8.
+  1. 2D DCT of the whole image;
+  2. the 1024 coefficients with the largest magnitude are chosen (DC excluded):
+     they are the perceptually most important components, so to remove the
+     mark the attacker has to ruin the image;
+  3. ALPHA * x is added to the magnitude of each one, with x = +1 / -1;
+  4. the signs are restored, IDCT, rounding to uint8.
 
-Perché additivo e non moltiplicativo (|C|(1 + alpha*x))? Dopo l'arrotondamento
-a uint8 il moltiplicativo dà risultati molto diversi da immagine a immagine:
-alcune immagini restano identiche (marchio perso), altre scendono a 56-57 dB,
-e su alcune immagini marchi diversi diventano correlati (rischio di falsi
-positivi). Con l'additivo ogni coefficiente cambia della stessa quantità:
-WPSNR quasi uguale su tutte le immagini e nessuno di questi problemi
-(misure nel README).
+Why additive and not multiplicative (|C|(1 + alpha*x))? After rounding to
+uint8 the multiplicative scheme gives very different results from image to
+image: some images stay identical (mark lost), others drop to 56-57 dB,
+and on some images different marks become correlated (risk of false
+positives). With the additive scheme every coefficient changes by the same
+amount: almost the same WPSNR on all images and none of these problems
+(measurements in the README).
 
-ALPHA regola il compromesso qualità (WPSNR) / robustezza.
-Deve essere identico a quello scritto in detection_groupname.py.
+ALPHA sets the quality (WPSNR) / robustness trade-off.
+It must be identical to the one written in detection_groupname.py.
 """
 import cv2
 import numpy as np
 from scipy.fft import dct, idct
 
-# --- parametri (fine-tuning ammesso: ALPHA e posizioni) ---------------------
-ALPHA = 5.0          # forza del marchio: WPSNR circa 64 dB (vedi README)
-MARK_SIZE = 1024     # lunghezza del watermark della gara
+# --- parameters (allowed fine-tuning: ALPHA and locations) ------------------
+ALPHA = 5.0          # mark strength: WPSNR about 64 dB (see README)
+MARK_SIZE = 1024     # length of the competition watermark
 
 
 def dct2(img):
@@ -39,17 +39,17 @@ def idct2(coeff):
 
 
 def embed_dct_ss(original, bits, alpha=ALPHA):
-    """Inserisce i bit 0/1 nell'immagine uint8 'original'. Restituisce uint8."""
+    """Embeds the 0/1 bits into the uint8 image 'original'. Returns uint8."""
     x = 2.0 * np.asarray(bits, dtype=float) - 1.0        # 0/1 -> -1/+1
     coeff = dct2(original.astype(float))
     signs = np.sign(coeff)
     magnitudes = np.abs(coeff)
 
-    # posizioni dei coefficienti più grandi, saltando il primo (il DC)
+    # locations of the largest coefficients, skipping the first one (the DC)
     locations = np.argsort(-magnitudes, axis=None)[1:MARK_SIZE + 1]
 
     edited = magnitudes.ravel().copy()
-    edited[locations] += alpha * x                       # formula additiva
+    edited[locations] += alpha * x                       # additive formula
     edited = edited.reshape(coeff.shape) * signs
 
     result = idct2(edited)
@@ -58,9 +58,9 @@ def embed_dct_ss(original, bits, alpha=ALPHA):
 
 def embedding(input1, input2):
     """
-    input1: percorso dell'immagine originale
-    input2: percorso del watermark (.npy con 1024 bit 0/1)
-    output1: immagine marchiata (np.uint8, 512x512)
+    input1: path of the original image
+    input2: path of the watermark (.npy with 1024 bits 0/1)
+    output1: watermarked image (np.uint8, 512x512)
     """
     original = cv2.imread(input1, cv2.IMREAD_GRAYSCALE)
     bits = np.load(input2)

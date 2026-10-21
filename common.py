@@ -1,15 +1,15 @@
 """
-Funzioni comuni usate da roc.py, attacks.py, demo.py e check_rules.py.
+Common functions used by roc.py, attacks.py, demo.py and check_rules.py.
 
-Contiene:
-  - lettura delle immagini e arrotondamento a uint8 (LAB-1/LAB-2)
-  - WPSNR (codice del LAB-3, filtro CSF calcolato una volta sola)
-  - similarità e utilità per il watermark (LAB-3)
-  - i 6 attacchi ammessi dalla gara (LAB-3 ROC + LAB-4)
-  - random_attack per la ROC (LAB-3 ROC, Example 2)
+Contains:
+  - image reading and rounding to uint8 (LAB-1/LAB-2)
+  - WPSNR (LAB-3 code, CSF filter computed only once)
+  - similarity and watermark utilities (LAB-3)
+  - the 6 attacks allowed by the competition (LAB-3 ROC + LAB-4)
+  - random_attack for the ROC (LAB-3 ROC, Example 2)
 
-NB: il file di detection NON importa questo modulo, perché la gara vuole un
-file unico: lì WPSNR e similarità sono ricopiati identici.
+NB: the detection file does NOT import this module, because the competition
+requires a single file: there WPSNR and similarity are copied identically.
 """
 import os
 
@@ -18,7 +18,7 @@ import numpy as np
 from scipy.ndimage import gaussian_filter, median_filter
 from scipy.signal import convolve2d
 
-# Cartelle del progetto (tutto relativo a questo file, non alla cartella corrente)
+# Project folders (everything relative to this file, not to the current directory)
 CTM_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(CTM_DIR)
 IMAGES_DIR = os.path.join(ROOT_DIR, "images")
@@ -29,10 +29,10 @@ MARK_SIZE = 1024
 
 
 # ---------------------------------------------------------------------------
-# Immagini
+# Images
 # ---------------------------------------------------------------------------
 def read_gray(path):
-    """Legge un'immagine in scala di grigi con OpenCV (uint8, 512x512)."""
+    """Reads a grayscale image with OpenCV (uint8, 512x512)."""
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
     if img is None:
         raise FileNotFoundError(path)
@@ -40,18 +40,18 @@ def read_gray(path):
 
 
 def to_uint8(x):
-    """Unica regola di arrotondamento del progetto: clip in [0,255], poi rint."""
+    """The project's single rounding rule: clip to [0,255], then rint."""
     return np.clip(np.rint(x), 0, 255).astype(np.uint8)
 
 
 def list_images(folder=IMAGES_DIR):
-    """Percorsi ordinati di tutte le .bmp di una cartella."""
+    """Sorted paths of all the .bmp files in a folder."""
     names = sorted(n for n in os.listdir(folder) if n.lower().endswith(".bmp"))
     return [os.path.join(folder, n) for n in names]
 
 
 # ---------------------------------------------------------------------------
-# WPSNR (LAB-3, identico a quello della gara)
+# WPSNR (LAB-3, identical to the competition one)
 # ---------------------------------------------------------------------------
 def _csffun(u, v):
     f = np.sqrt(u ** 2 + v ** 2)
@@ -74,11 +74,11 @@ def _get_csf_filter():
     return np.real(np.fft.ifftshift(np.fft.ifft2(np.fft.ifftshift(Fmat))))
 
 
-CSF_FILTER = _get_csf_filter()   # calcolato una volta sola
+CSF_FILTER = _get_csf_filter()   # computed only once
 
 
 def wpsnr_lab(image_a, image_b):
-    """WPSNR esattamente come nel LAB-3 (convolve2d). Lento: circa 3 s a chiamata."""
+    """WPSNR exactly as in LAB-3 (convolve2d). Slow: about 3 s per call."""
     A = image_a.astype(np.float64) / 255.0
     B = image_b.astype(np.float64) / 255.0
     if np.array_equal(A, B):
@@ -90,9 +90,9 @@ def wpsnr_lab(image_a, image_b):
 
 def wpsnr(image_a, image_b):
     """
-    Stesso WPSNR del LAB-3, ma la convoluzione con boundary='wrap' è fatta con la
-    FFT (convoluzione circolare, LAB-2): risultato identico (differenza ~1e-14 dB,
-    verificata in check_rules.py) e circa 30 volte più veloce (~0.1 s).
+    Same WPSNR as LAB-3, but the convolution with boundary='wrap' is done with the
+    FFT (circular convolution, LAB-2): identical result (difference ~1e-14 dB,
+    verified in check_rules.py) and about 30 times faster (~0.1 s).
     """
     A = image_a.astype(np.float64) / 255.0
     B = image_b.astype(np.float64) / 255.0
@@ -100,33 +100,33 @@ def wpsnr(image_a, image_b):
         return 9999999.0
     error = A - B
     kernel = np.zeros_like(error)
-    kernel[:41, :41] = CSF_FILTER                         # filtro 41x41 ...
-    kernel = np.roll(kernel, (-20, -20), axis=(0, 1))     # ... centrato nell'origine
+    kernel[:41, :41] = CSF_FILTER                         # 41x41 filter ...
+    kernel = np.roll(kernel, (-20, -20), axis=(0, 1))     # ... centered at the origin
     weighted_error = np.real(np.fft.ifft2(np.fft.fft2(error) * np.fft.fft2(kernel)))
     wmse = np.mean(weighted_error ** 2)
     return 20 * np.log10(1.0 / np.sqrt(wmse))
 
 
 # ---------------------------------------------------------------------------
-# Watermark e similarità (LAB-3)
+# Watermark and similarity (LAB-3)
 # ---------------------------------------------------------------------------
 def load_mark(path=MARK_PATH):
-    """Il watermark della gara: 1024 bit 0/1."""
+    """The competition watermark: 1024 bits 0/1."""
     return np.load(path).astype(np.int64)
 
 
 def random_mark(rng):
-    """Watermark casuale 0/1 della stessa lunghezza (per H0 della ROC)."""
+    """Random 0/1 watermark of the same length (for H0 of the ROC)."""
     return rng.integers(0, 2, MARK_SIZE)
 
 
 def to_bipolar(bits):
-    """0/1 -> -1/+1, così la similarità tra marchi casuali è circa 0."""
+    """0/1 -> -1/+1, so that the similarity between random marks is about 0."""
     return 2.0 * np.asarray(bits, dtype=float) - 1.0
 
 
 def similarity(a, b):
-    """Similarità coseno (LAB-3, EXERCISEs_SOL). Vale 0 se un vettore è nullo."""
+    """Cosine similarity (LAB-3, EXERCISEs_SOL). It is 0 if a vector is null."""
     a = np.asarray(a, dtype=float).ravel()
     b = np.asarray(b, dtype=float).ravel()
     norm = np.linalg.norm(a) * np.linalg.norm(b)
@@ -136,16 +136,16 @@ def similarity(a, b):
 
 
 # ---------------------------------------------------------------------------
-# I 6 attacchi ammessi. Tutti: uint8 512x512 in ingresso e in uscita.
+# The 6 allowed attacks. All of them: uint8 512x512 as input and output.
 # ---------------------------------------------------------------------------
 def awgn(img, sigma, seed=0):
-    """Rumore gaussiano additivo con deviazione standard sigma."""
+    """Additive Gaussian noise with standard deviation sigma."""
     noise = np.random.default_rng(seed).normal(0, sigma, img.shape)
     return to_uint8(img.astype(float) + noise)
 
 
 def blur(img, sigma):
-    """Filtro gaussiano passa-basso."""
+    """Gaussian low-pass filter."""
     return to_uint8(gaussian_filter(img.astype(float), sigma))
 
 
@@ -156,18 +156,18 @@ def sharpen(img, alpha, sigma=1.0):
 
 
 def median(img, k):
-    """Filtro mediano k x k (k dispari)."""
+    """k x k median filter (k odd)."""
     return median_filter(img, size=int(k)).astype(np.uint8)
 
 
 def jpeg(img, qf):
-    """Compressione JPEG in memoria (cv2.imencode, nessun file temporaneo)."""
+    """In-memory JPEG compression (cv2.imencode, no temporary file)."""
     ok, encoded = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, int(qf)])
     return cv2.imdecode(encoded, cv2.IMREAD_GRAYSCALE)
 
 
 def resize(img, scale):
-    """Rimpicciolisce di 'scale' e riporta alla dimensione originale."""
+    """Shrinks by 'scale' and brings it back to the original size."""
     h, w = img.shape
     small = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
     return cv2.resize(small, (w, h), interpolation=cv2.INTER_CUBIC)
@@ -185,13 +185,13 @@ ATTACKS = {
 
 def random_attack(img, rng):
     """
-    Attacco casuale per la ROC (idea del LAB-3, Example 2), con parametri
-    estratti negli intervalli del piano. Una o due operazioni in sequenza.
-    Restituisce l'immagine attaccata e una descrizione testuale.
+    Random attack for the ROC (idea from LAB-3, Example 2), with parameters
+    drawn from the plan's ranges. One or two operations in sequence.
+    Returns the attacked image and a text description.
     """
     out = img
     steps = []
-    for _ in range(rng.integers(1, 3)):          # 1 o 2 attacchi
+    for _ in range(rng.integers(1, 3)):          # 1 or 2 attacks
         name = rng.choice(list(ATTACKS))
         if name == "awgn":
             p = rng.uniform(1, 20)

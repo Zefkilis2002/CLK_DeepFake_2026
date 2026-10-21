@@ -1,19 +1,19 @@
 """
-Controlli di conformità alle regole della gara (C14 del piano, semplificato).
-Da lanciare ogni volta che si cambiano ALPHA o TAU.
+Compliance checks against the competition rules (C14 of the plan, simplified).
+To be run every time ALPHA or TAU is changed.
 
-Controlla:
-  1. WPSNR veloce identico a quello del laboratorio
-  2. file di detection: niente lettura del watermark, niente percorsi relativi,
-     niente import di file nostri
-  3. embedding: uint8 512x512, nessuna stampa
-  4. detection, su immagini mai usate dalla ROC:
-       marchiata -> 1, originale -> 0, altri watermark -> 0, altre immagini -> 0,
-       immagini distrutte (WPSNR <= 25) -> 0, attacchi leggeri -> 1,
-       nessuna stampa, tempo < 5 s
-  5. le funzioni di attacco non ricevono l'originale
+Checks:
+  1. fast WPSNR identical to the lab one
+  2. detection file: no reading of the watermark, no relative paths,
+     no imports of our own files
+  3. embedding: uint8 512x512, no prints
+  4. detection, on images never used by the ROC:
+       watermarked -> 1, original -> 0, other watermarks -> 0, other images -> 0,
+       destroyed images (WPSNR <= 25) -> 0, light attacks -> 1,
+       no prints, time < 5 s
+  5. the attack functions do not receive the original
 
-Uso:  python check_rules.py
+Usage:  python check_rules.py
 """
 import contextlib
 import inspect
@@ -30,7 +30,7 @@ from common import (CTM_DIR, MARK_PATH, awgn, blur, jpeg, list_images, random_ma
 import embedding
 
 DETECTION_FILE = os.path.join(CTM_DIR, "detection_groupname.py")
-TEST_IMAGES = list_images()[60:80]        # non usate dalla ROC
+TEST_IMAGES = list_images()[60:80]        # not used by the ROC
 OTHER_MARKS = 5
 TMP = os.path.join(CTM_DIR, "results")
 
@@ -44,7 +44,7 @@ def check(ok, text):
 
 
 def silent_call(fn, *args):
-    """Esegue fn catturando stdout e stderr; restituisce (risultato, testo stampato)."""
+    """Runs fn capturing stdout and stderr; returns (result, printed text)."""
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
         result = fn(*args)
@@ -54,7 +54,7 @@ def silent_call(fn, *args):
 def main():
     os.makedirs(TMP, exist_ok=True)
     p_wm, p_att = os.path.join(TMP, "_chk_wm.bmp"), os.path.join(TMP, "_chk_att.bmp")
-    detection = attacks.load_detection(DETECTION_FILE)     # caricata come la caricano gli altri
+    detection = attacks.load_detection(DETECTION_FILE)     # loaded the same way the others load it
 
     print("1. WPSNR")
     a = read_gray(TEST_IMAGES[0])
@@ -99,7 +99,7 @@ def main():
         for _ in range(OTHER_MARKS):
             run("altro watermark", 0, embedding.embed_dct_ss(orig, random_mark(rng)))
         run("altra immagine", 0, read_gray(TEST_IMAGES[(i + 1) % len(TEST_IMAGES)]))
-        # attacchi che portano davvero il WPSNR sotto 25 dB (regola delle penalità)
+        # attacks that really bring the WPSNR below 25 dB (penalty rule)
         for destroyed in (awgn(wm, 150), sharpen(wm, 20, 2), awgn(sharpen(wm, 10, 1), 80)):
             w, _ = run("distrutta", 0, destroyed)
             destroyed_w.append(w)

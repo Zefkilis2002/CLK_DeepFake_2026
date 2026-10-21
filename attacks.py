@@ -1,30 +1,30 @@
 """
-Attacchi del gruppo.
+The group's attacks.
 
-1. attacks(input1, attack_name, param_array): la funzione chiesta dalle regole.
-   Applica in sequenza uno o più dei 6 attacchi ammessi alla sola immagine
-   marchiata. Nomi: 'awgn', 'blur', 'sharp', 'jpeg', 'resize', 'median'.
+1. attacks(input1, attack_name, param_array): the function required by the rules.
+   Applies one or more of the 6 allowed attacks in sequence, to the watermarked
+   image only. Names: 'awgn', 'blur', 'sharp', 'jpeg', 'resize', 'median'.
 
-2. search_attack(watermarked, oracle): ricerca automatica dell'attacco con il
-   WPSNR più alto che cancella il marchio di un altro gruppo.
-   - Ogni "catena" (un attacco o una combinazione) ha una forza s in [0, 1]:
-     s = 0 attacco leggerissimo, s = 1 attacco fortissimo.
-   - Il WPSNR tra marchiata e attaccata lo calcoliamo noi, gratis: così non
-     chiediamo mai alla detection avversaria attacchi sotto 35 dB o peggiori
-     del migliore già trovato.
-   - Per ogni catena: prima la forza massima con WPSNR >= 35 (se nemmeno lì il
-     marchio sparisce, la catena è scartata), poi bisezione su s per trovare
-     l'attacco più leggero che lo cancella ancora (stessa idea della ricerca
-     del sigma minimo nel LAB-4, sezione blur + sharpening).
+2. search_attack(watermarked, oracle): automatic search for the attack with the
+   highest WPSNR that removes another group's mark.
+   - Each "chain" (a single attack or a combination) has a strength s in [0, 1]:
+     s = 0 very light attack, s = 1 very strong attack.
+   - We compute the WPSNR between watermarked and attacked ourselves, for free:
+     this way we never ask the opponent's detection about attacks below 35 dB
+     or worse than the best one already found.
+   - For each chain: first the maximum strength with WPSNR >= 35 (if the mark
+     does not disappear even there, the chain is discarded), then bisection on s
+     to find the lightest attack that still removes it (same idea as the search
+     for the minimum sigma in LAB-4, blur + sharpening section).
 
-REGOLA: l'attacco usa solo l'immagine marchiata. L'originale non entra mai
-nelle funzioni di attacco: compare solo dentro l'"oracolo" (make_oracle), cioè
-come primo argomento della detection dell'altro gruppo, che ci dice soltanto
-se l'attacco è riuscito.
+RULE: the attack uses only the watermarked image. The original never enters
+the attack functions: it only appears inside the "oracle" (make_oracle), i.e.
+as the first argument of the other group's detection, which only tells us
+whether the attack succeeded.
 
-Uso a riga di comando, il giorno della gara (vedi README):
-    python attacks.py --our groupname --targets cartella_immagini_altri \
-                      --detectors cartella_detection --originals cartella_originali
+Command-line usage, on competition day (see README):
+    python attacks.py --our groupname --targets other_images_folder \
+                      --detectors detection_folder --originals originals_folder
 """
 import argparse
 import contextlib
@@ -39,10 +39,10 @@ import numpy as np
 from common import ATTACKS, read_gray, wpsnr
 
 # ---------------------------------------------------------------------------
-# 1. Funzione richiesta dalle regole
+# 1. Function required by the rules
 # ---------------------------------------------------------------------------
 def apply_attacks(img, names, params):
-    """Applica in sequenza gli attacchi 'names' con i parametri 'params'."""
+    """Applies the attacks 'names' in sequence with the parameters 'params'."""
     out = img
     for name, p in zip(names, params):
         out = ATTACKS[name](out, p)
@@ -51,10 +51,10 @@ def apply_attacks(img, names, params):
 
 def attacks(input1, attack_name, param_array):
     """
-    input1: percorso dell'immagine marchiata
-    attack_name: stringa o lista di stringhe ('awgn', 'blur', 'sharp', 'jpeg', 'resize', 'median')
-    param_array: lista di parametri, uno per attacco
-    output1: immagine attaccata (uint8)
+    input1: path of the watermarked image
+    attack_name: string or list of strings ('awgn', 'blur', 'sharp', 'jpeg', 'resize', 'median')
+    param_array: list of parameters, one per attack
+    output1: attacked image (uint8)
     """
     names = [attack_name] if isinstance(attack_name, str) else list(attack_name)
     params = list(np.atleast_1d(param_array))
@@ -62,7 +62,7 @@ def attacks(input1, attack_name, param_array):
 
 
 # ---------------------------------------------------------------------------
-# 2. Libreria di catene: forza s in [0,1] -> parametri
+# 2. Chain library: strength s in [0,1] -> parameters
 # ---------------------------------------------------------------------------
 def k_median(s):
     return [3, 5, 7, 9][min(int(s * 4), 3)]
@@ -93,13 +93,13 @@ def chain_params(chain, s):
 
 
 def describe(names, params):
-    """Testo per il log Excel, es. 'blur 1.20 + jpeg 70'."""
+    """Text for the Excel log, e.g. 'blur 1.20 + jpeg 70'."""
     return " + ".join("%s %s" % (n, ("%.2f" % p) if isinstance(p, float) else p)
                       for n, p in zip(names, params))
 
 
 def strongest_allowed(wm, chain, min_wpsnr=35.5, steps=6):
-    """Forza massima con WPSNR >= min_wpsnr, trovata con bisezione LOCALE (nessuna detection)."""
+    """Maximum strength with WPSNR >= min_wpsnr, found with LOCAL bisection (no detection)."""
     names, params = chain_params(chain, 1.0)
     attacked = apply_attacks(wm, names, params)
     if wpsnr(wm, attacked) >= min_wpsnr:
@@ -117,31 +117,31 @@ def strongest_allowed(wm, chain, min_wpsnr=35.5, steps=6):
 
 def search_attack(wm, oracle, chains=None, bisect_steps=4):
     """
-    Cerca l'attacco riuscito con il WPSNR più alto.
-    wm: immagine marchiata (uint8). oracle(img) -> (presente, wpsnr).
-    Restituisce (immagine, wpsnr, descrizione) del migliore, oppure None.
+    Searches for the successful attack with the highest WPSNR.
+    wm: watermarked image (uint8). oracle(img) -> (present, wpsnr).
+    Returns (image, wpsnr, description) of the best one, or None.
     """
     best = None
     for chain in (chains or CHAINS):
-        # forza massima ammessa: se qui il marchio resiste, la catena non serve
+        # maximum allowed strength: if the mark survives here, the chain is useless
         s_hi = strongest_allowed(wm, chain)
         names, params = chain_params(chain, s_hi)
         attacked = apply_attacks(wm, names, params)
         w = wpsnr(wm, attacked)
         if best is not None and w <= best[1]:
-            continue                       # non può battere il migliore: niente query
+            continue                       # cannot beat the best one: no query
         present, w = oracle(attacked)
         if present or w < 35:
             continue
         found = (attacked, w, describe(names, params))
-        # bisezione: attacco più leggero che cancella ancora il marchio
+        # bisection: lightest attack that still removes the mark
         s_lo = 0.0
         for _ in range(bisect_steps):
             mid = (s_lo + s_hi) / 2
             names, params = chain_params(chain, mid)
             attacked = apply_attacks(wm, names, params)
             if wpsnr(wm, attacked) <= found[1]:
-                s_lo = mid                 # non migliorerebbe: proviamo più leggero
+                s_lo = mid                 # would not improve: try lighter
                 continue
             present, w = oracle(attacked)
             if not present and w >= 35:
@@ -154,10 +154,10 @@ def search_attack(wm, oracle, chains=None, bisect_steps=4):
 
 
 # ---------------------------------------------------------------------------
-# Oracolo: la detection di un altro gruppo (l'unico punto che vede l'originale)
+# Oracle: another group's detection (the only place that sees the original)
 # ---------------------------------------------------------------------------
 def load_detection(path):
-    """Carica detection_<gruppo>.py o .pyc (come il grader .pyc dei laboratori)."""
+    """Loads detection_<group>.py or .pyc (like the labs' .pyc grader)."""
     name = os.path.splitext(os.path.basename(path))[0]
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
@@ -166,17 +166,17 @@ def load_detection(path):
 
 
 def make_oracle(detection, original_path, watermarked_path, tmp_path):
-    """Restituisce oracle(img) -> (presente, wpsnr) usando la detection data."""
+    """Returns oracle(img) -> (present, wpsnr) using the given detection."""
     def oracle(attacked):
         cv2.imwrite(tmp_path, attacked)
-        with contextlib.redirect_stdout(io.StringIO()):     # ignora eventuali stampe
+        with contextlib.redirect_stdout(io.StringIO()):     # ignore any prints
             present, w = detection(original_path, watermarked_path, tmp_path)
         return int(present), float(w)
     return oracle
 
 
 # ---------------------------------------------------------------------------
-# Giorno della gara: attacca tutte le immagini scaricate
+# Competition day: attack all the downloaded images
 # ---------------------------------------------------------------------------
 def find_detection(folder, group):
     for ext in (".py", ".pyc"):
@@ -188,9 +188,9 @@ def find_detection(folder, group):
 
 def attack_folder(our, targets, detectors, originals, out_dir, log_path):
     """
-    targets: cartella con le immagini degli altri gruppi, nome gruppoB_immagine.bmp
-    detectors: cartella con detection_gruppoB.py / .pyc
-    originals: cartella con le 3 immagini originali della gara (immagine.bmp)
+    targets: folder with the other groups' images, named groupB_image.bmp
+    detectors: folder with detection_groupB.py / .pyc
+    originals: folder with the 3 original competition images (image.bmp)
     """
     os.makedirs(out_dir, exist_ok=True)
     tmp_path = os.path.abspath(os.path.join(out_dir, "_tmp_attacked.bmp"))
@@ -220,7 +220,7 @@ def attack_folder(our, targets, detectors, originals, out_dir, log_path):
             attacked, w, text = result
             out_path = os.path.join(out_dir, "%s_%s_%s.bmp" % (our, group, image))
             cv2.imwrite(out_path, attacked)
-            # verifica sul file salvato, esattamente quello che caricheremo
+            # check on the saved file, exactly the one we will upload
             present, w_check = oracle(read_gray(out_path))
             ok = (present == 0 and w_check >= 35)
             print("%s: WPSNR %.2f | %s | verificato: %s" % (fname, w_check, text, ok))

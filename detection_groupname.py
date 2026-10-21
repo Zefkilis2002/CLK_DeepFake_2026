@@ -1,26 +1,26 @@
 """
-Detection del gruppo (file unico, come chiede la gara).
+The group's detection (single file, as the competition requires).
 
-Schema: Spread Spectrum additivo in DCT (LAB-3), detection non-blind.
-  - W_extracted = marchio estratto dalla marchiata   (usando l'originale)
-  - W_attacked  = marchio estratto dall'attaccata    (usando l'originale)
-  - presente se sim(W_extracted, W_attacked) >= TAU
-Il file del watermark NON viene letto: il marchio si estrae dalle immagini.
-TAU è stato calcolato una volta sola con roc.py e scritto qui a mano.
-Nessuna stampa, nessuna finestra, nessun percorso relativo.
+Scheme: additive Spread Spectrum in DCT (LAB-3), non-blind detection.
+  - W_extracted = mark extracted from the watermarked image (using the original)
+  - W_attacked  = mark extracted from the attacked image    (using the original)
+  - present if sim(W_extracted, W_attacked) >= TAU
+The watermark file is NOT read: the mark is extracted from the images.
+TAU was computed only once with roc.py and written here by hand.
+No prints, no windows, no relative paths.
 """
 import cv2
 import numpy as np
 from scipy.fft import dct
 
-# --- parametri: devono coincidere con embedding.py --------------------------
+# --- parameters: must match embedding.py ------------------------------------
 ALPHA = 5.0
 MARK_SIZE = 1024
-TAU = 0.1218         # soglia dalla ROC (ALPHA = 5): TPR 0.87, FPR 0 su 1119 casi H0
+TAU = 0.1218         # threshold from the ROC (ALPHA = 5): TPR 0.87, FPR 0 on 1119 H0 cases
 
 
 # ---------------------------------------------------------------------------
-# WPSNR (codice del laboratorio)
+# WPSNR (lab code)
 # ---------------------------------------------------------------------------
 def _csffun(u, v):
     f = np.sqrt(u ** 2 + v ** 2)
@@ -48,10 +48,10 @@ _CSF_FILTER = _get_csf_filter()
 
 def wpsnr(image_a, image_b):
     """
-    WPSNR del laboratorio. La riga originale era
+    Lab WPSNR. The original line was
         convolve2d(A - B, _CSF_FILTER, mode="same", boundary="wrap")
-    e richiede circa 3 s (troppo vicino al limite di 5 s). Qui la stessa
-    convoluzione circolare è fatta con la FFT: risultato identico, ~0.1 s.
+    and takes about 3 s (too close to the 5 s limit). Here the same
+    circular convolution is done with the FFT: identical result, ~0.1 s.
     """
     A = image_a.astype(np.float64) / 255.0
     B = image_b.astype(np.float64) / 255.0
@@ -67,10 +67,10 @@ def wpsnr(image_a, image_b):
 
 
 # ---------------------------------------------------------------------------
-# Estrazione e similarità (LAB-3: detection con v='additive' e similarity)
+# Extraction and similarity (LAB-3: detection with v='additive' and similarity)
 # ---------------------------------------------------------------------------
 def extract_dct_ss(original, image, alpha=ALPHA):
-    """Stima di x (+-1) sulle 1024 posizioni scelte sull'ORIGINALE."""
+    """Estimate of x (+-1) at the 1024 locations chosen on the ORIGINAL."""
     c0 = np.abs(dct(dct(original.astype(float), axis=0, norm="ortho"), axis=1, norm="ortho"))
     c1 = np.abs(dct(dct(image.astype(float), axis=0, norm="ortho"), axis=1, norm="ortho"))
     locations = np.argsort(-c0, axis=None)[1:MARK_SIZE + 1]
@@ -80,7 +80,7 @@ def extract_dct_ss(original, image, alpha=ALPHA):
 
 
 def similarity(a, b):
-    """Similarità coseno; 0 se uno dei due vettori è nullo."""
+    """Cosine similarity; 0 if either vector is null."""
     norm = np.linalg.norm(a) * np.linalg.norm(b)
     if norm == 0:
         return 0.0
@@ -89,19 +89,19 @@ def similarity(a, b):
 
 def detection(input1, input2, input3):
     """
-    input1: percorso dell'originale
-    input2: percorso della marchiata
-    input3: percorso dell'attaccata
-    output1: 1 se il marchio è presente nell'attaccata, altrimenti 0
-    output2: WPSNR(marchiata, attaccata)
+    input1: path of the original
+    input2: path of the watermarked image
+    input3: path of the attacked image
+    output1: 1 if the mark is present in the attacked image, otherwise 0
+    output2: WPSNR(watermarked, attacked)
     """
     original = cv2.imread(input1, cv2.IMREAD_GRAYSCALE)
     watermarked = cv2.imread(input2, cv2.IMREAD_GRAYSCALE)
     attacked = cv2.imread(input3, cv2.IMREAD_GRAYSCALE)
-    if attacked.shape != original.shape:          # sicurezza: stessa dimensione
+    if attacked.shape != original.shape:          # safety: same size
         attacked = cv2.resize(attacked, (original.shape[1], original.shape[0]))
 
-    # la detection viene SEMPRE eseguita, qualunque sia il WPSNR
+    # detection is ALWAYS performed, whatever the WPSNR
     w_extracted = extract_dct_ss(original, watermarked)
     w_attacked = extract_dct_ss(original, attacked)
     sim = similarity(w_extracted, w_attacked)
