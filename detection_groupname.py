@@ -16,7 +16,7 @@ from scipy.fft import dct
 # --- parametri: devono coincidere con embedding.py --------------------------
 ALPHA = 5.0
 MARK_SIZE = 1024
-TAU = 0.1253         # soglia dalla ROC (roc.py, ALPHA = 5)
+TAU = 0.1218         # soglia dalla ROC (ALPHA = 5): TPR 0.87, FPR 0 su 1119 casi H0
 
 
 # ---------------------------------------------------------------------------

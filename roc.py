@@ -18,8 +18,11 @@ Procedura (quella delle regole della gara):
      positivo costa 2 punti.
 Le immagini sono divise in calibrazione e verifica (come nel LAB-4).
 
-Uso:  python roc.py              (schema e alpha di embedding.py)
-      python roc.py 0.01         (prova un altro alpha)
+Alla fine verifica anche la TAU scritta in detection_groupname.py (0.1218):
+TPR e FPR che dà sulle stesse immagini.
+
+Uso:  python roc.py              (ALPHA di embedding.py)
+      python roc.py 4.5          (prova un altro alpha)
 """
 import os
 import sys
@@ -104,6 +107,10 @@ def run(embed, extract, param, n_calib=N_CALIB, n_test=N_TEST, name="dct_ss", pl
     print("  TAU = %.4f" % tau)
     print("  calibrazione: TPR %.3f FPR %.4f" % rates(s_cal, l_cal, tau))
     print("  verifica:     TPR %.3f FPR %.4f" % (test_tpr, test_fpr))
+    if param == det.ALPHA:
+        # controllo della soglia scritta a mano nella detection
+        print("  TAU della detection = %.4f -> calibrazione TPR %.3f FPR %.4f | verifica TPR %.3f FPR %.4f"
+              % ((det.TAU,) + rates(s_cal, l_cal, det.TAU) + rates(s_test, l_test, det.TAU)))
 
     if plot:
         os.makedirs(RESULTS_DIR, exist_ok=True)

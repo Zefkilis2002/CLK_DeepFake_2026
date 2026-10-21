@@ -1,5 +1,5 @@
 """
-Funzioni comuni usate da ROC, attacchi, benchmark e test.
+Funzioni comuni usate da roc.py, attacks.py, demo.py e check_rules.py.
 
 Contiene:
   - lettura delle immagini e arrotondamento a uint8 (LAB-1/LAB-2)

@@ -26,7 +26,7 @@ import numpy as np
 from scipy.fft import dct, idct
 
 # --- parametri (fine-tuning ammesso: ALPHA e posizioni) ---------------------
-ALPHA = 5.0          # forza del marchio (vedi tabella dei preset nel README)
+ALPHA = 5.0          # forza del marchio: WPSNR circa 64 dB (vedi README)
 MARK_SIZE = 1024     # lunghezza del watermark della gara
 
 
