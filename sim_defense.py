@@ -2,7 +2,8 @@ import cv2
 from pathlib import Path
 
 from embedding import embedding
-from common import wpsnr
+# from common import wpsnr, wpsnr_lab
+from detection_groupname import wpsnr
 
 
 BASE_DIR = Path(__file__).resolve().parent
