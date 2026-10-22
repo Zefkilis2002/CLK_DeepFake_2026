@@ -80,6 +80,9 @@ python -m submission.checks --group NOME
 ```
 
 ## Giorno della gara
+Gli script `scripts/defense_day.py` e `scripts/attack_day.py` seguono la giornata passo per passo
+(STEP 0-6, commentati nel codice); la versione base ha gli stessi passi in `day_defense.py` e `day_attack.py`.
+
 **Difesa (8:30-10:00)**
 1. `python -m scripts.defense_day --images CARTELLA --group NOME`: prova i preset dal più alto,
    sceglie quello in fascia su tutte e 3 le immagini, salva `NOME_immagine.bmp` in `defense_out/`,

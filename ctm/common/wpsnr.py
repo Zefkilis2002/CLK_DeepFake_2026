@@ -1,8 +1,8 @@
 """
 C3: WPSNR del laboratorio.
 
-Il blocco tra i marcatori ">>> inline" e "<<< inline" viene copiato così com'è
-nei file consegnati dal generatore (submission/build_submission.py).
+Versione veloce (FFT) usata dagli esperimenti del package. Il file di detection
+consegnato usa invece il codice LAB-3 letterale di wpsnr_lab.py (stesso risultato).
 """
 import numpy as np
 from scipy.signal import convolve2d

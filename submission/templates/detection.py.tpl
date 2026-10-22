@@ -11,6 +11,7 @@ Nessuna stampa, nessuna finestra, nessun percorso relativo.
 import cv2
 import numpy as np
 from scipy.fft import dct, idct
+from scipy.signal import convolve2d
 
 ALPHA = {{ALPHA}}
 MODE = "{{MODE}}"

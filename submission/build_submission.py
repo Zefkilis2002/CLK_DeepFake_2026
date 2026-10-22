@@ -48,7 +48,7 @@ def build(preset_name=None, group=GROUP, out_dir=SUBMISSION_OUT):
     values = {"GROUP": group, "PRESET": name, "SCHEME": preset["scheme"], "PARAMS": repr(p),
               "ALPHA": repr(float(p["alpha"])), "MODE": p["mode"], "N": int(p["n"]),
               "TAU": repr(float(preset["tau"])),
-              "WPSNR_CODE": inline_block(os.path.join("common", "wpsnr.py")),
+              "WPSNR_CODE": inline_block(os.path.join("common", "wpsnr_lab.py")),
               "SCHEME_CODE": inline_block(os.path.join("schemes", "dct_ss.py")),
               "SIMILARITY_CODE": inline_block(os.path.join("common", "watermark.py"))}
 

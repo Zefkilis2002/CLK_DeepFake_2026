@@ -54,6 +54,10 @@ Tutti i comandi vanno eseguiti dal terminale all'interno di questa cartella (`ct
 ..\.venv\Scripts\python.exe -m scripts.attack_day --targets T --detectors D --originals O --our NOME_GRUPPO
 ```
 
+Entrambi gli script stampano e commentano ogni passo (STEP 0-6). Le immagini da caricare finiscono in
+`challenge_day/defense_upload/` e `challenge_day/attack_upload/` (con `attack_log.csv` per l'Excel).
+Attacco: `--only g1,g2` divide i gruppi tra i portatili, `--phase A` fa solo la passata veloce.
+
 ---
 
 ## 📁 Com'è organizzato il progetto
