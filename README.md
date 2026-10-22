@@ -27,6 +27,7 @@ without the mark. The full analyses (halving, presets, test bench) are on the `a
 | `roc.py` | ROC curve, computation of TAU and check of the TAU written in the detection |
 | `demo.py` | full run: embedding → detection → attacks → search |
 | `check_rules.py` | competition rule checks: must end with `TUTTO OK` |
+| `day_defense.py`, `day_attack.py` | the challenge day, step by step (see below) |
 
 ## Folders and requirements
 
@@ -50,19 +51,27 @@ All commands are run from `ctm/`.
 
 ## Competition day
 
-**Defense (8:30-10:00)**
-1. For each of the 3 images: `embedding("img.bmp", "../clk.npy")`, saved as `NAME_img.bmp`.
-2. Check the WPSNR, run `check_rules.py`.
-3. Upload the 3 images and `detection_NAME.py`. After 10:00 nothing can be changed.
+Two scripts follow the day step by step; each step is commented in the code and printed on screen.
 
-**Attack (10:15-12:30)**
+| Phase | Script | Output |
+|---|---|---|
+| Defense (8:30-10:00) | `day_defense.py` | `challenge_day/defense_upload/`: `NAME_img.bmp` x3 + `detection_NAME.py` |
+| Attack (10:15-12:30) | `day_attack.py` | `challenge_day/attack_upload/`: `NAME_groupB_img.bmp` + `attack_log.csv` |
+
 ```
-..\.venv\Scripts\python.exe attacks.py --our NAME --targets T --detectors D --originals O
+..\.venv\Scripts\python.exe day_defense.py --group NAME --images FOLDER_WITH_3_IMAGES
+..\.venv\Scripts\python.exe day_attack.py --group NAME --targets T --detections D --originals O
 ```
-- `T`: the other groups' images (`groupB_img.bmp`); `D`: their `detection_groupB.py/.pyc`;
-  `O`: the 3 originals (only needed as an argument to their detection).
-- Upload the `NAME_groupB_img.bmp` files from the `attacked/` folder; the log for the Excel sheet is
-  `attack_log.csv`.
+- `day_defense.py`: checks names and ALPHA, embeds, prints WPSNR and quality points, tests our
+  detection on the 3 images (watermarked 1, original 0, other watermark 0, destroyed 0, light
+  attack 1, time, no prints), copies the detection file for the upload.
+- `day_attack.py`: `T` = the other groups' images (`groupB_img.bmp`), `D` = their
+  `detection_groupB.py/.pyc`, `O` = the 3 originals (only passed to their detection). It checks
+  every detection, then phase A (one quick success per image) and phase B (lightest attack that
+  still removes the mark), re-checks the saved files and writes the Excel log.
+  `--only g1,g2` splits the groups between laptops; `--phase A` stops after the quick pass.
+- Simulation: on the `challenge_sim` branch use `--images challenge_sim/defense` and
+  `--targets challenge_sim/attack/images --detections challenge_sim/attack/detections --originals challenge_sim/defense`.
 
 ## Before submission
 Rename `detection_groupname.py` to `detection_NAME.py` and update the references in
