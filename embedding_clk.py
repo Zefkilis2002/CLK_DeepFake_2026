@@ -1,26 +1,18 @@
 """
-The group's embedding: ADDITIVE Spread Spectrum in DCT (LAB-3).
+How we hide a watermark inside an image:
 
-Idea (WatermarkingSpreadSpectrum2022.pdf; LAB3-ROC.ipynb, embedding with
-v='additive'):
-  1. 2D DCT of the whole image;
-  2. the 1024 coefficients with the largest magnitude are chosen (DC excluded):
-     they are the perceptually most important components, so to remove the
-     mark the attacker has to ruin the image;
-  3. ALPHA * x is added to the magnitude of each one, with x = +1 / -1;
-  4. the signs are restored, IDCT, rounding to uint8.
+  1. Convert the image into frequency data (DCT).
+  2. Pick the 1024 strongest frequencies (skip the first one - brightness).
+  3. For each bit of the watermark: add ALPHA if the bit is 1, subtract ALPHA if it is 0.
+  4. Convert back to a normal image.
 
-Why additive and not multiplicative (|C|(1 + alpha*x))? After rounding to
-uint8 the multiplicative scheme gives very different results from image to
-image: some images stay identical (mark lost), others drop to 56-57 dB,
-and on some images different marks become correlated (risk of false
-positives). With the additive scheme every coefficient changes by the same
-amount: almost the same WPSNR on all images and none of these problems
-(measurements in the README).
+Why this way? Because every pixel changes by the same small amount,
+so the image always looks almost identical to the original.
 
-ALPHA sets the quality (WPSNR) / robustness trade-off.
-It must be identical to the one written in detection_clk.py.
+ALPHA controls the trade-off: higher = easier to detect, lower = better quality.
+Must be the same value used in detection_clk.py.
 """
+
 import cv2
 import numpy as np
 from scipy.fft import dct, idct
@@ -30,30 +22,30 @@ ALPHA = 5.0          # mark strength: WPSNR about 64 dB (see README)
 MARK_SIZE = 1024     # length of the competition watermark
 
 
-def dct2(img):
+def dct2(img):      # converts an image into 2D Discrete Cosine Transforms (DCT) coefficients
     return dct(dct(img, axis=0, norm="ortho"), axis=1, norm="ortho")
 
 
-def idct2(coeff):
+def idct2(coeff):   # converts 2D DCT coefficients back into an image's spatial representation
     return idct(idct(coeff, axis=1, norm="ortho"), axis=0, norm="ortho")
 
-
+# Additive Spread Spectrum in DCT
 def embed_dct_ss(original, bits, alpha=ALPHA):
     """Embeds the 0/1 bits into the uint8 image 'original'. Returns uint8."""
-    x = 2.0 * np.asarray(bits, dtype=float) - 1.0        # 0/1 -> -1/+1
-    coeff = dct2(original.astype(float))
-    signs = np.sign(coeff)
-    magnitudes = np.abs(coeff)
+    x = 2.0 * np.asarray(bits, dtype=float) - 1.0        # 0/1 -> -1/+1     +1 -> increase coef, -1 -> decrease coef, with 0/1, 0 would do nothing
+    coeff = dct2(original.astype(float))   # converts image to decimals, DCT uses decimals & negatives
+    signs = np.sign(coeff) # it saves only the sign for each coef
+    magnitudes = np.abs(coeff) # it saves every magnituded with its absolute value (no sign)
 
     # locations of the largest coefficients, skipping the first one (the DC)
     locations = np.argsort(-magnitudes, axis=None)[1:MARK_SIZE + 1]
 
-    edited = magnitudes.ravel().copy()
-    edited[locations] += alpha * x                       # additive formula
-    edited = edited.reshape(coeff.shape) * signs
+    edited = magnitudes.ravel().copy() # Flatten the 2D intensity matrix into a 1D vector and make a copy of it
+    edited[locations] += alpha * x                       # additive formula (change only 1024 coefficients)
+    edited = edited.reshape(coeff.shape) * signs  # Restore the 2D matrix and reapply the original signs
 
-    result = idct2(edited)
-    return np.clip(np.rint(result), 0, 255).astype(np.uint8)
+    result = idct2(edited)      # converts frequencies back to pixels
+    return np.clip(np.rint(result), 0, 255).astype(np.uint8)    # caps values to a valid pixel range and converts back to normal 8-bit image
 
 
 def embedding(input1, input2):

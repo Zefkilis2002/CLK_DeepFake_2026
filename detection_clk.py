@@ -1,14 +1,12 @@
 """
-The group's detection (single file, as the competition requires).
+How we check if our watermark survived an attack:
 
-Scheme: additive Spread Spectrum in DCT (LAB-3), non-blind detection.
-  - W_extracted = mark extracted from the watermarked image (using the original)
-  - W_attacked  = mark extracted from the attacked image    (using the original)
-  - present if sim(W_extracted, W_attacked) >= TAU
-The watermark file is NOT read: the mark is extracted from the images.
-TAU was computed only once with roc_clk.py and written here by hand.
-WPSNR is the LAB3 code copied unchanged (convolve2d, about 0.5 s).
-No prints, no windows, no relative paths.
+  1. Extract the watermark from the watermarked image (using the original -> WATERMARKED_IMG - ORIGINAL_IMG).
+  2. Extract the watermark from the attacked image (using the original -> ATTACKED_IMG - ORIGINAL_IMG).
+  3. Compare the two: if they are similar enough (>= TAU), the mark is still there.
+
+We never read the watermark file directly: we extract it from the images.
+TAU is a fixed threshold computed once with roc_clk.py.
 """
 import cv2
 import numpy as np
@@ -154,7 +152,7 @@ def wpsnr(image_a, image_b):
 # Extraction and similarity (LAB-3: detection with v='additive' and similarity)
 # ---------------------------------------------------------------------------
 def extract_dct_ss(original, image, alpha=ALPHA):
-    """Estimate of x (+-1) at the 1024 locations chosen on the ORIGINAL."""
+    """Recovers the 1024 hidden watermark bits (+1 or -1) by comparing with the original image."""
     c0 = np.abs(dct(dct(original.astype(float), axis=0, norm="ortho"), axis=1, norm="ortho"))
     c1 = np.abs(dct(dct(image.astype(float), axis=0, norm="ortho"), axis=1, norm="ortho"))
     locations = np.argsort(-c0, axis=None)[1:MARK_SIZE + 1]
@@ -164,7 +162,7 @@ def extract_dct_ss(original, image, alpha=ALPHA):
 
 
 def similarity(a, b):
-    """Cosine similarity; 0 if either vector is null."""
+    """Measures how similar two lists of numbers are (from -1 to 1; 1 means identical)."""
     norm = np.linalg.norm(a) * np.linalg.norm(b)
     if norm == 0:
         return 0.0
@@ -183,13 +181,13 @@ def detection(input1, input2, input3):
     watermarked = cv2.imread(input2, cv2.IMREAD_GRAYSCALE)
     attacked = cv2.imread(input3, cv2.IMREAD_GRAYSCALE)
     if attacked.shape != original.shape:          # safety: same size
-        attacked = cv2.resize(attacked, (original.shape[1], original.shape[0]))
+        attacked = cv2.resize(attacked, (original.shape[1], original.shape[0]))     # it resizes the shape of the attacked image to match original
 
     # detection is ALWAYS performed, whatever the WPSNR
     w_extracted = extract_dct_ss(original, watermarked)
     w_attacked = extract_dct_ss(original, attacked)
-    sim = similarity(w_extracted, w_attacked)
+    sim = similarity(w_extracted, w_attacked)   # compares watermark estimate of the watermark/attack images
 
     output1 = 1 if sim >= TAU else 0
     output2 = float(wpsnr(watermarked, attacked))
-    return output1, output2
+    return output1, output2         # detection result 1 >= threashold, 0 if below threshold

@@ -1,31 +1,17 @@
 """
-The group's attacks.
+How we attack other groups watermarks:
 
-1. attacks(input1, attack_name, param_array): the function required by the rules.
-   Applies one or more of the 6 allowed attacks in sequence, to the watermarked
-   image only. Names: 'awgn', 'blur', 'sharp', 'jpeg', 'resize', 'median'.
+1. attacks(): applies one or more of the 6 allowed attacks to an image.
+   Available attacks: 'awgn', 'blur', 'sharp', 'jpeg', 'resize', 'median'.
 
-2. search_attack(watermarked, oracle): automatic search for the attack with the
-   highest WPSNR that removes another group's mark.
-   - Each "chain" (a single attack or a combination) has a strength s in [0, 1]:
-     s = 0 very light attack, s = 1 very strong attack.
-   - We compute the WPSNR between watermarked and attacked ourselves, for free:
-     this way we never ask the opponent's detection about attacks below 35 dB
-     or worse than the best one already found.
-   - For each chain: first the maximum strength with WPSNR >= 35 (if the mark
-     does not disappear even there, the chain is discarded), then bisection on s
-     to find the lightest attack that still removes it (same idea as the search
-     for the minimum sigma in LAB-4, blur + sharpening section).
+2. search_attack(): automatically finds the lightest attack that removes
+   another group's watermark while keeping the image quality above 35 dB.
+   - Tries different attack strengths (0 = very light, 1 = very strong).
+   - Uses bisection to find the minimum strength that works.
 
-RULE: the attack uses only the watermarked image. The original never enters
-the attack functions: it only appears inside the "oracle" (make_oracle), i.e.
-as the first argument of the other group's detection, which only tells us
-whether the attack succeeded.
-
-Command-line usage, on competition day (see README):
-    python attacks_clk.py --our clk --targets other_images_folder \
-                      --detectors detection_folder --originals originals_folder
+RULE: we only use the watermarked image, never the original.
 """
+
 import argparse
 import contextlib
 import csv
@@ -38,11 +24,9 @@ import numpy as np
 
 from scipy.ndimage import gaussian_filter, median_filter
 
-# ---------------------------------------------------------------------------
-# Functions copied from common.py (read_gray, to_uint8, WPSNR, the 6 attacks)
-# ---------------------------------------------------------------------------
+
 def read_gray(path):
-    """Reads a grayscale image with OpenCV (uint8, 512x512)."""
+    """Loads an image from disk as grayscale (black and white, 512x512 pixels)."""
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
     if img is None:
         raise FileNotFoundError(path)
@@ -50,7 +34,7 @@ def read_gray(path):
 
 
 def to_uint8(x):
-    """The project's single rounding rule: clip to [0,255], then rint."""
+    """Rounds pixel values and clamps them to the valid range [0, 255], then converts to uint8."""
     return np.clip(np.rint(x), 0, 255).astype(np.uint8)
 
 
