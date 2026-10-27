@@ -1,13 +1,22 @@
 """
-Computes the detection threshold TAU using the ROC curve.
-Steps:
-  1. Embed our watermark in images and apply random attacks.
-  2. Score similarity for images WITH our mark (H1) and WITHOUT (H0).
-  3. Pick TAU: highest detection rate with false alarms below FPR_TARGET.
-  4. Verify TAU against the value in detection_clk.py.
-Usage:  python roc_clk.py          (uses ALPHA from embedding_clk.py)
-        python roc_clk.py 4.5      (try a different alpha)
+How we find the detection threshold (TAU) using a ROC curve:
+
+TAU is the cutoff similarity score used in detection_clk.py:
+  - Similarity >= TAU -> Watermark detected (1)
+  - Similarity <  TAU -> Watermark NOT detected (0)
+
+This script finds the optimal TAU value:
+
+    1. Test WITH OUR mark: watermark images, attack them, and measure similarity.
+    2. Test WITHOUT mark: test images without our mark (scores should be near 0).
+    3. Pick TAU: set the cutoff score to detect our mark with zero false alarms.
+    4. Verify: make sure TAU matches the value in detection_clk.py.
+
+Usage:
+  python roc_clk.py          (uses ALPHA from embedding_clk.py)
+  python roc_clk.py 4.5      (try a different alpha)
 """
+
 import os
 import sys
 
@@ -22,10 +31,6 @@ from scipy.fft import dct, idct
 from scipy.ndimage import gaussian_filter, median_filter
 from scipy.signal import convolve2d
 
-# ---------------------------------------------------------------------------
-# Functions copied from common.py
-# ---------------------------------------------------------------------------
-# Project folders (everything relative to this file, not to the current directory)
 CTM_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(CTM_DIR)
 IMAGES_DIR = os.path.join(ROOT_DIR, "images")
@@ -47,12 +52,12 @@ def read_gray(path):
 
 
 def to_uint8(x):
-    """The project's single rounding rule: clip to [0,255], then rint."""
+    """Converts numbers into valid image pixels: rounds to integers and clamps between 0 and 255."""
     return np.clip(np.rint(x), 0, 255).astype(np.uint8)
 
 
 def list_images(folder=IMAGES_DIR):
-    """Sorted paths of all the .bmp files in a folder."""
+    """Returns an ordered list of all .bmp image file paths in the folder."""
     names = sorted(n for n in os.listdir(folder) if n.lower().endswith(".bmp"))
     return [os.path.join(folder, n) for n in names]
 
@@ -115,25 +120,25 @@ def wpsnr(image_a, image_b):
 
 
 # ---------------------------------------------------------------------------
-# Watermark and similarity (LAB-3)
+# Watermark and similarity
 # ---------------------------------------------------------------------------
 def load_mark(path=MARK_PATH):
-    """The competition watermark: 1024 bits 0/1."""
+    """load the competition watermark: 1024 bits 0/1."""
     return np.load(path).astype(np.int64)
 
 
 def random_mark(rng):
-    """Random 0/1 watermark of the same length (for H0 of the ROC)."""
+    """Generates a random 1024-bit watermark to simulate a foreign or fake mark."""
     return rng.integers(0, 2, MARK_SIZE)
 
 
 def to_bipolar(bits):
-    """0/1 -> -1/+1, so that the similarity between random marks is about 0."""
+    """Converts 0/1 bits into -1/+1 so that different marks have ~0 similarity."""
     return 2.0 * np.asarray(bits, dtype=float) - 1.0
 
 
 def similarity(a, b):
-    """Cosine similarity (LAB-3, EXERCISEs_SOL). It is 0 if a vector is null."""
+    """Measures similarity between two marks from -1 to 1 (1 = identical, 0 = unrelated)."""
     a = np.asarray(a, dtype=float).ravel()
     b = np.asarray(b, dtype=float).ravel()
     norm = np.linalg.norm(a) * np.linalg.norm(b)
@@ -191,11 +196,7 @@ ATTACKS = {
 
 
 def random_attack(img, rng):
-    """
-    Random attack for the ROC (idea from LAB-3, Example 2), with parameters
-    drawn from the plan's ranges. One or two operations in sequence.
-    Returns the attacked image and a text description.
-    """
+    """Applies 1 or 2 random attacks (blur, noise, jpeg, etc.) to test watermark resistance."""
     out = img
     steps = []
     for _ in range(rng.integers(1, 3)):          # 1 or 2 attacks
@@ -222,10 +223,7 @@ def random_attack(img, rng):
     return out, " + ".join(steps)
 
 
-# ---------------------------------------------------------------------------
-# Copied from embedding_clk.py (embedding parameters and embed_dct_ss)
-# ---------------------------------------------------------------------------
-ALPHA = 5.0          # mark strength: WPSNR about 64 dB (see README)
+ALPHA = 5.0          # mark strength: WPSNR about 64 dB
 
 
 def dct2(img):
