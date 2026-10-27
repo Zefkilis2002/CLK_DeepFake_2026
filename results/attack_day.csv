@@ -1,8 +1,0 @@
-time;group;image;wpsnr;attack;chain;strength
-2026-10-22 13:46:09;lynx;harbour;47.838699783710624;resize 0.46 + jpeg 46;resize+jpeg;0.8125
-2026-10-22 13:46:09;lynx;market;43.4092780189761;resize 0.46 + jpeg 46;resize+jpeg;0.8125
-2026-10-22 13:46:10;lynx;tower;39.891859364969605;resize 0.39 + jpeg 39;resize+jpeg;0.9375
-2026-10-22 13:46:11;tundra;harbour;39.10588940435834;blur 2.30;blur;0.75
-2026-10-22 13:46:12;tundra;market;35.575414801547666;blur 1.64;blur;0.515625
-2026-10-22 13:46:13;tundra;tower;35.64546594711861;blur 1.63 + jpeg 47;blur+jpeg;0.796875
-2026-10-22 13:46:13;zefiro;harbour;36.32022504647551;jpeg 5;jpeg;1.0

@@ -1,2 +1,0 @@
-time;preset;scheme;params;tau;auc;tpr;heldout_tpr;heldout_fpr
-2026-10-26 09:55:10;P64;dct_ss;{'alpha': 5.0, 'mode': 'additive', 'n': 1024};0.121789798473123;0.9975059117797151;0.871313672922252;0.9020618556701031;0.0
