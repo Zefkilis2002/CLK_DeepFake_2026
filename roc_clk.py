@@ -225,17 +225,15 @@ def random_attack(img, rng):
 
 ALPHA = 5.0          # mark strength: WPSNR about 64 dB
 
-
 def dct2(img):
     return dct(dct(img, axis=0, norm="ortho"), axis=1, norm="ortho")
-
 
 def idct2(coeff):
     return idct(idct(coeff, axis=1, norm="ortho"), axis=0, norm="ortho")
 
 
 def embed_dct_ss(original, bits, alpha=ALPHA):
-    """Embeds the 0/1 bits into the uint8 image 'original'. Returns uint8."""
+    """Hides the watermark bits inside the original image and returns the watermarked image."""
     x = 2.0 * np.asarray(bits, dtype=float) - 1.0        # 0/1 -> -1/+1
     coeff = dct2(original.astype(float))
     signs = np.sign(coeff)
@@ -252,9 +250,6 @@ def embed_dct_ss(original, bits, alpha=ALPHA):
     return np.clip(np.rint(result), 0, 255).astype(np.uint8)
 
 
-# ---------------------------------------------------------------------------
-# Copied from detection_clk.py (threshold written there and extraction)
-# ---------------------------------------------------------------------------
 DET_ALPHA = 5.0
 DET_TAU = 0.1253     # threshold from the ROC (ALPHA = 5): TPR 0.875, FPR 0 on 1101 H0 cases
 
@@ -277,7 +272,12 @@ SEED = 2026
 
 
 def compute_scores(paths, embed, extract, param, bits, rng):
-    """Returns (scores, labels) of H1 and H0 for the given images."""
+    """
+    Collects similarity scores from attack tests:
+      - label 1: images WITH our mark (scores should be high).
+      - label 0: images WITHOUT our mark (scores should be near 0).
+    Returns (scores, labels) to build the ROC curve.
+    """
     scores, labels = [], []
     for path in paths:
         orig = read_gray(path)
@@ -302,7 +302,12 @@ def compute_scores(paths, embed, extract, param, bits, rng):
 
 
 def choose_tau(scores, labels, fpr_target=FPR_TARGET):
-    """Tau with the highest TPR among those with FPR <= fpr_target (LAB-4)."""
+    """
+    Finds the best detection threshold (TAU):
+      - Maximizes detection rate (catches our mark as often as possible).
+      - Keeps false alarms close to zero (FPR <= target).
+    Returns the optimal TAU and ROC curve stats.
+    """
     fpr, tpr, thr = roc_curve(labels, scores, drop_intermediate=False)
     valid = np.flatnonzero(fpr <= fpr_target)
     best = valid[np.argmax(tpr[valid])]
