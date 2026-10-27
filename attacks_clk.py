@@ -290,7 +290,8 @@ def attack_folder(our, targets, detectors, originals, out_dir, log_path):
     originals: folder with the 3 original competition images (image.bmp)
     """
     os.makedirs(out_dir, exist_ok=True)
-    tmp_path = os.path.abspath(os.path.join(out_dir, "_tmp_attacked.bmp"))
+    # one temp file per process, so several runs in parallel do not overwrite each other's image
+    tmp_path = os.path.abspath(os.path.join(out_dir, "_tmp_attacked_%d.bmp" % os.getpid()))
     new_log = not os.path.exists(log_path)
     with open(log_path, "a", newline="") as f:
         log = csv.writer(f, delimiter=";")
