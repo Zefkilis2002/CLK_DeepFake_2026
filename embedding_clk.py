@@ -30,9 +30,10 @@ def idct2(coeff):   # converts 2D DCT coefficients back into an image's spatial 
     return idct(idct(coeff, axis=1, norm="ortho"), axis=0, norm="ortho")
 
 # Additive Spread Spectrum in DCT
-def embed_dct_ss(original, bits, alpha=ALPHA):
+def embed_dct_ss(original, bits, alpha=None):
     """Embeds the 0/1 bits into the uint8 image 'original'. Returns uint8."""
-    x = 2.0 * np.asarray(bits, dtype=float) - 1.0        # 0/1 -> -1/+1     +1 -> increase coef, -1 -> decrease coef, with 0/1, 0 would do nothing
+    alpha = ALPHA if alpha is None else alpha    # read ALPHA at call time, so changing embedding_clk.ALPHA works
+    x =2.0 * np.asarray(bits, dtype=float) - 1.0        # 0/1 -> -1/+1     +1 -> increase coef, -1 -> decrease coef, with 0/1, 0 would do nothing
     coeff = dct2(original.astype(float))   # converts image to decimals, DCT uses decimals & negatives
     signs = np.sign(coeff) # it saves only the sign for each coef
     magnitudes = np.abs(coeff) # it saves every magnituded with its absolute value (no sign)

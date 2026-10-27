@@ -218,13 +218,14 @@ def search_attack(wm, oracle, chains=None, bisect_steps=4):
     """
     best = None
     for chain in (chains or CHAINS):
-        # maximum allowed strength: if the mark survives here, the chain is useless
-        s_hi = strongest_allowed(wm, chain)
+        # strongest attack that still BEATS the current best (35.5 dB if none yet):
+        # if the mark survives even this, the chain cannot do better than best
+        floor_w = 35.5 if best is None else best[1] + 0.2
+        s_hi = strongest_allowed(wm, chain, min_wpsnr=floor_w)
         names, params = chain_params(chain, s_hi)
         attacked = apply_attacks(wm, names, params)
-        w = wpsnr(wm, attacked)
-        if best is not None and w <= best[1]:
-            continue                       # Cannot beat the best one: no need to query the oracle
+        if wpsnr(wm, attacked) < floor_w:
+            continue                       # Chain cannot reach this quality: no need to query the oracle
         present, w = oracle(attacked)   # Call the oracle to check if the watermark is removed
         if present or w < 35:               # If watermark is still present or quality is too low, continue
             continue
