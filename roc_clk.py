@@ -333,16 +333,16 @@ def run(embed, extract, param, n_calib=N_CALIB, n_test=N_TEST, name="dct_ss", pl
     test_tpr, test_fpr = rates(s_test, l_test, tau)
 
     h0 = s_cal[l_cal == 0]
-    print("schema %s, parametro %g" % (name, param))
-    print("  campioni calibrazione: H1=%d H0=%d" % (np.sum(l_cal == 1), np.sum(l_cal == 0)))
-    print("  AUC = %.4f | H0: media %.4f, std %.4f, max %.4f | soglia minima 4 std = %.4f"
+    print("scheme %s, parameter %g" % (name, param))
+    print("  calibration samples: H1=%d H0=%d" % (np.sum(l_cal == 1), np.sum(l_cal == 0)))
+    print("  AUC = %.4f | H0: mean %.4f, std %.4f, max %.4f | minimum 4-std threshold = %.4f"
           % (roc_auc, h0.mean(), h0.std(), h0.max(), floor))
     print("  TAU = %.4f" % tau)
-    print("  calibrazione: TPR %.3f FPR %.4f" % rates(s_cal, l_cal, tau))
-    print("  verifica:     TPR %.3f FPR %.4f" % (test_tpr, test_fpr))
+    print("  calibration: TPR %.3f FPR %.4f" % rates(s_cal, l_cal, tau))
+    print("  validation:  TPR %.3f FPR %.4f" % (test_tpr, test_fpr))
     if param == DET_ALPHA:
         # check of the threshold written by hand in the detection
-        print("  TAU della detection = %.4f -> calibrazione TPR %.3f FPR %.4f | verifica TPR %.3f FPR %.4f"
+        print("  detection TAU = %.4f -> calibration TPR %.3f FPR %.4f | validation TPR %.3f FPR %.4f"
               % ((DET_TAU,) + rates(s_cal, l_cal, DET_TAU) + rates(s_test, l_test, DET_TAU)))
 
     if plot:
@@ -355,13 +355,13 @@ def run(embed, extract, param, n_calib=N_CALIB, n_test=N_TEST, name="dct_ss", pl
         axes[1].hist(h0, bins=40, alpha=.6, label="H0")
         axes[1].hist(s_cal[l_cal == 1], bins=40, alpha=.6, label="H1")
         axes[1].axvline(tau, color="black", ls="--", label="tau = %.3f" % tau)
-        axes[1].set(xlabel="similarità", ylabel="conteggio", title="Distribuzioni")
+        axes[1].set(xlabel="similarity", ylabel="count", title="Distributions")
         axes[1].legend()
         plt.tight_layout()
         out = os.path.join(RESULTS_DIR, "roc_%s_%g.png" % (name, param))
         plt.savefig(out, dpi=120)
         plt.close(fig)
-        print("  grafico salvato in", out)
+        print("  plot saved to", out)
     return tau
 
 

@@ -304,7 +304,7 @@ def attack_folder(our, targets, detectors, originals, out_dir, log_path):
                 continue
             det_path = find_detection(detectors, group)
             if det_path is None:
-                print("%s: detection di %s non trovata" % (fname, group))
+                print("%s: detection for %s not found" % (fname, group))
                 continue
             wm_path = os.path.abspath(os.path.join(targets, fname))
             orig_path = os.path.abspath(os.path.join(originals, image + ".bmp"))
@@ -312,7 +312,7 @@ def attack_folder(our, targets, detectors, originals, out_dir, log_path):
 
             result = search_attack(read_gray(wm_path), oracle)
             if result is None:
-                print("%s: nessun attacco riuscito" % fname)
+                print("%s: no successful attack" % fname)
                 continue
             attacked, w, text = result
             out_path = os.path.join(out_dir, "%s_%s_%s.bmp" % (our, group, image))
@@ -320,7 +320,7 @@ def attack_folder(our, targets, detectors, originals, out_dir, log_path):
             # check on the saved file, exactly the one we will upload
             present, w_check = oracle(read_gray(out_path))
             ok = (present == 0 and w_check >= 35)
-            print("%s: WPSNR %.2f | %s | verificato: %s" % (fname, w_check, text, ok))
+            print("%s: WPSNR %.2f | %s | verified: %s" % (fname, w_check, text, ok))
             if ok:
                 log.writerow([image, group, "%.2f" % w_check, text])
                 f.flush()
@@ -329,12 +329,12 @@ def attack_folder(our, targets, detectors, originals, out_dir, log_path):
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description="Attacca le immagini degli altri gruppi")
-    ap.add_argument("--our", required=True, help="nome del nostro gruppo")
-    ap.add_argument("--targets", required=True, help="cartella gruppoB_immagine.bmp")
-    ap.add_argument("--detectors", required=True, help="cartella detection_gruppoB.py/.pyc")
-    ap.add_argument("--originals", required=True, help="cartella con le immagini originali")
-    ap.add_argument("--out", default="attacked", help="cartella di uscita")
-    ap.add_argument("--log", default="attack_log.csv", help="log per l'Excel")
+    ap = argparse.ArgumentParser(description="Attack the other groups' images")
+    ap.add_argument("--our", required=True, help="name of our group")
+    ap.add_argument("--targets", required=True, help="folder containing groupB_image.bmp files")
+    ap.add_argument("--detectors", required=True, help="folder containing detection_groupB.py/.pyc files")
+    ap.add_argument("--originals", required=True, help="folder containing the original images")
+    ap.add_argument("--out", default="attacked", help="output folder")
+    ap.add_argument("--log", default="attack_log.csv", help="Excel log file")
     a = ap.parse_args()
     attack_folder(a.our, a.targets, a.detectors, a.originals, a.out, a.log)
