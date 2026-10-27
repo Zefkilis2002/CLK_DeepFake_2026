@@ -1,28 +1,12 @@
 """
-Computation of the threshold TAU with the ROC curve (LAB-3 ROC "Example 2" +
-choice of tau from LAB-4), done only ONCE and outside the detection.
-
-Procedure (the one in the competition rules):
-  1. embedding of our watermark into a set of images;
-  2. random attacks on the watermarked images (random_attack, 1-2 allowed attacks);
-  3. H1 (label 1): sim(W_extracted, W_attacked), i.e. the same comparison the
-     detection makes. We keep only attacks with WPSNR >= 35, because below
-     35 dB the attack has failed anyway;
-  4. H0 (label 0), three cases "without our mark":
-       a. random watermark against W_attacked (step 5 of the rules)
-       b. same image watermarked with ANOTHER watermark and attacked
-          (simulates the other groups' images)
-       c. unwatermarked original, attacked
-  5. roc_curve, AUC and choice of tau = maximum TPR with FPR <= FPR_TARGET.
-     For safety tau does not go below mean(H0) + 4 * std(H0): a false
-     positive costs 2 points.
-The images are split into calibration and test sets (as in LAB-4).
-
-At the end it also checks the TAU written in detection_clk.py (0.1253):
-the TPR and FPR it gives on the same images.
-
-Usage:  python roc_clk.py              (ALPHA from embedding_clk.py)
-        python roc_clk.py 4.5          (try another alpha)
+Computes the detection threshold TAU using the ROC curve.
+Steps:
+  1. Embed our watermark in images and apply random attacks.
+  2. Score similarity for images WITH our mark (H1) and WITHOUT (H0).
+  3. Pick TAU: highest detection rate with false alarms below FPR_TARGET.
+  4. Verify TAU against the value in detection_clk.py.
+Usage:  python roc_clk.py          (uses ALPHA from embedding_clk.py)
+        python roc_clk.py 4.5      (try a different alpha)
 """
 import os
 import sys

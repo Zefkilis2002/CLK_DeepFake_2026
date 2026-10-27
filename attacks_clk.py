@@ -67,9 +67,7 @@ CSF_FILTER = _get_csf_filter()   # computed only once
 
 def wpsnr(image_a, image_b):
     """
-    Same WPSNR as LAB-3, but the convolution with boundary='wrap' is done with the
-    FFT (circular convolution, LAB-2): identical result (difference ~1e-14 dB,
-    verified in check_rules.py) and about 30 times faster (~0.1 s).
+    filters the difference between the two images with that kernel,then takes PSNR of the result
     """
     A = image_a.astype(np.float64) / 255.0
     B = image_b.astype(np.float64) / 255.0
@@ -138,6 +136,7 @@ ATTACKS = {
 def apply_attacks(img, names, params):
     """Applies the attacks 'names' in sequence with the parameters 'params'."""
     out = img
+    # Applies each attack sequentially with its corresponding parameter
     for name, p in zip(names, params):
         out = ATTACKS[name](out, p)
     return out
@@ -156,7 +155,7 @@ def attacks(input1, attack_name, param_array):
 
 
 # ---------------------------------------------------------------------------
-# 2. Chain library: strength s in [0,1] -> parameters
+# 2. Attack recipes: maps an attack power slider (0 to 1) to real settings
 # ---------------------------------------------------------------------------
 def k_median(s):
     return [3, 5, 7, 9][min(int(s * 4), 3)]
@@ -187,15 +186,17 @@ def chain_params(chain, s):
 
 
 def describe(names, params):
-    """Text for the Excel log, e.g. 'blur 1.20 + jpeg 70'."""
+    """Creates a text description of the attack (e.g., 'blur 1.20 + jpeg 70')."""
     return " + ".join("%s %s" % (n, ("%.2f" % p) if isinstance(p, float) else p)
                       for n, p in zip(names, params))
 
 
 def strongest_allowed(wm, chain, min_wpsnr=35.5, steps=6):
-    """Maximum strength with WPSNR >= min_wpsnr, found with LOCAL bisection (no detection)."""
+    """Finds the maximum attack strength (0.0 to 1.0) that keeps quality acceptable (WPSNR >= 35.5 dB)."""
+    # apply the attack with the maximum strength (1.0)
     names, params = chain_params(chain, 1.0)
     attacked = apply_attacks(wm, names, params)
+    # if with the maximum strength, it still keeps quality acceptable, return 1.0
     if wpsnr(wm, attacked) >= min_wpsnr:
         return 1.0
     lo, hi = 0.0, 1.0
@@ -211,8 +212,8 @@ def strongest_allowed(wm, chain, min_wpsnr=35.5, steps=6):
 
 def search_attack(wm, oracle, chains=None, bisect_steps=4):
     """
-    Searches for the successful attack with the highest WPSNR.
-    wm: watermarked image (uint8). oracle(img) -> (present, wpsnr).
+    Finds the attack that removes the watermark while keeping the best image quality.
+    wm: watermarked image.
     Returns (image, wpsnr, description) of the best one, or None.
     """
     best = None
@@ -223,11 +224,12 @@ def search_attack(wm, oracle, chains=None, bisect_steps=4):
         attacked = apply_attacks(wm, names, params)
         w = wpsnr(wm, attacked)
         if best is not None and w <= best[1]:
-            continue                       # cannot beat the best one: no query
-        present, w = oracle(attacked)
-        if present or w < 35:
+            continue                       # Cannot beat the best one: no need to query the oracle
+        present, w = oracle(attacked)   # Call the oracle to check if the watermark is removed
+        if present or w < 35:               # If watermark is still present or quality is too low, continue
             continue
-        found = (attacked, w, describe(names, params))
+        found = (attacked, w, describe(names, params)) #save the attack with the best quality
+        
         # bisection: lightest attack that still removes the mark
         s_lo = 0.0
         for _ in range(bisect_steps):
@@ -248,10 +250,10 @@ def search_attack(wm, oracle, chains=None, bisect_steps=4):
 
 
 # ---------------------------------------------------------------------------
-# Oracle: another group's detection (the only place that sees the original)
+# Opponent's detector: checks if the watermark was successfully removed
 # ---------------------------------------------------------------------------
 def load_detection(path):
-    """Loads detection_<group>.py or .pyc (like the labs' .pyc grader)."""
+    """Loads the opponent's detection program from a file."""
     name = os.path.splitext(os.path.basename(path))[0]
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
@@ -260,7 +262,7 @@ def load_detection(path):
 
 
 def make_oracle(detection, original_path, watermarked_path, tmp_path):
-    """Returns oracle(img) -> (present, wpsnr) using the given detection."""
+    """Creates a tester function: takes an attacked image and checks if the watermark survives."""
     def oracle(attacked):
         cv2.imwrite(tmp_path, attacked)
         with contextlib.redirect_stdout(io.StringIO()):     # ignore any prints
